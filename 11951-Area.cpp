@@ -18,7 +18,6 @@ ll K;
 ii add(ii a, ii b){ return make_pair(a.price + b.price, b.area + a.area);}
 ii sub(ii a, ii b){ return make_pair(a.price - b.price, a.area - b.area);}
 ii max(ii a, ii b){
-    // puedo pagar ambos
     if (a.area > b.area) return a; // a es de más area
     if (a.area < b.area) return b; // b es de más area
     return a.price < b.price ? a : b; // son de igual area, me quedo con el más barato 

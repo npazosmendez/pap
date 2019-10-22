@@ -169,19 +169,52 @@ public:
 int main() {
     ios::sync_with_stdio(false); cin.tie(NULL); cout.tie(NULL);
     int N;
+    /*
+    La idea es hacer un matching bipartito con "subcolumnas" y "subfilas".
+    Las filas/columnas se parten en "subfilas"/"subcolumnas" en sus tramos separados por los peones X:
+
+        Tablero:
+            X . . . . 
+            X . . . . 
+            . . X . . 
+            . X . . . 
+            . . . . X 
+
+        Subilfas:
+            - 1 1 1 1 
+            - 2 2 2 2 
+            3 3 - 4 4 
+            5 - 6 6 6 
+            7 7 7 7 - 
+
+        Subcolumnas:
+            - 2 4 6 7 
+            - 2 4 6 7 
+            1 2 - 6 7 
+            1 - 5 6 7 
+            1 3 5 6 -
+    
+    En el grafo bipartito, cada sufila y cada subcolumna tiene un nodo.
+    Un nodo subcolumna está conectado con las subfilas que cruza.
+
+    Así podemos imaginar que para cada subcolumna queremos elegir un casillero
+    (una subfila que la cruza) para poner una torre, y debemos hacerlo
+    de tal forma de no poner dos torres en la misma subfila.
+     */
     while(cin >> N){
         vector<vector<char>> tablero(N, vector<char>(N));
         vector<vector<int>> subcols(N, vector<int>(N, -1));
         vector<vector<int>> subrows(N, vector<int>(N, -1));
         forn(i,N) forn(j,N) cin >> tablero[i][j];
-        int gsize = 2*N*(N+1)+2;
+        int gsize = 2*N*(N+1)+2; // cota de nodos: N*(N+1) acota subfilas, N*(N+1) acota subcolumnas, + fuente + sumidero
         int t = gsize-1;
         flowgraph g(gsize);
         int node = 1;
         forn(i,N) {
             forn(j,N) {
                 if(tablero[i][j] == 'X'){
-                    g.add_edge(0, node, 1);
+                    // ya terminé esta subcolumna
+                    g.add_edge(0, node, 1); // conecto en el grafo la fuente con la columna, peso 1
                     node++;
                 }else{
                     subcols[i][j] = node;
@@ -193,7 +226,7 @@ int main() {
         forn(j,N) {
             forn(i,N) {
                 if(tablero[i][j] == 'X'){
-                    g.add_edge(node, t, 1);
+                    g.add_edge(node, t, 1); // conecto la subfila terminada con  el sumidero
                     node++;
                 }else{
                     subrows[i][j] = node;
@@ -202,7 +235,6 @@ int main() {
             g.add_edge(node, t, 1);
             node++;
         }
-
         forn(i,N) forn(j,N) if(tablero[i][j] != 'X') {
             g.add_edge(subcols[i][j], subrows[i][j], 1);
         }

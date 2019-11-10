@@ -23,7 +23,6 @@ struct AhoCorasick {
 	struct Node {
 		// (nmatches is optional)
 		int back, next[alpha], start = -1, end = -1, nmatches = 0;
-    list<int> words;
 		Node(int v) { memset(next, v, sizeof(next)); }
 	};
 	vector<Node> N;
@@ -40,7 +39,6 @@ struct AhoCorasick {
 		backp.push_back(N[n].end);
 		N[n].end = j;
 		N[n].nmatches++;
-    N[n].words.push_back(j);
 	}
 	AhoCorasick(vector<string>& pat) {
 		N.emplace_back(-1);
@@ -64,17 +62,7 @@ struct AhoCorasick {
 			}
 		}
 	}
-	vector<int> find(string word) {
-		int n = 0;
-		vector<int> res; // ll count = 0;
-		trav(c, word) {
-			n = N[n].next[c - first];
-			res.push_back(N[n].end);
-			// count += N[n].nmatches;
-		}
-		return res;
-	}
-	ll count(string word) {
+	ll count(string &word) {
 		int n = 0;
 		ll count = 0;
 		trav(c, word) {
@@ -82,19 +70,6 @@ struct AhoCorasick {
 			count += N[n].nmatches;
 		}
 		return count;
-	}
-	int findAll(vector<string>& pat, string word) {
-		vector<int> r = find(word);
-		unordered_set<int> indexes;
-		forr(i,0,sz(word)) {
-			int ind = r[i];
-			while (ind != -1) {
-				indexes.insert(ind);
-        //res[i - sz(pat[ind]) + 1].push_back(ind);
-				ind = backp[ind];
-			}
-		}
-		return indexes.size();
 	}
 };
 
@@ -127,7 +102,7 @@ int main() {
                 dirty = true;
             } else if(query[0] == '?') {
                 if(dirty){
-                    if(extra_patterns.size() > 500) {
+                    if(extra_patterns.size() > 70) {
                         // concateno al main
                         main_patterns.insert( main_patterns.end(), extra_patterns.begin(), extra_patterns.end() );
                         extra_patterns.clear();

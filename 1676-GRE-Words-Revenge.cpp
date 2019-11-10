@@ -17,107 +17,86 @@ typedef pair<int,int> ii;
 #define mp make_pair
 #define debugc(c) do{cerr << #c << ": "; forall(it, c) {cerr << *it << " ";} cerr << endl; } while(0);
 
+#define trav(e,c) for(auto &e : c)
+struct AhoCorasick {
+	enum {alpha = 2, first = '0'};
+	struct Node {
+		// (nmatches is optional)
+		int back, next[alpha], start = -1, end = -1, nmatches = 0;
+    list<int> words;
+		Node(int v) { memset(next, v, sizeof(next)); }
+	};
+	vector<Node> N;
+	vector<int> backp;
+	void insert(string& s, int j) {
+		assert(!s.empty());
+		int n = 0;
+		trav(c, s) {
+			int& m = N[n].next[c - first];
+			if (m == -1) { n = m = sz(N); N.emplace_back(-1); }
+			else n = m;
+		}
+		if (N[n].end == -1) N[n].start = j;
+		backp.push_back(N[n].end);
+		N[n].end = j;
+		N[n].nmatches++;
+    N[n].words.push_back(j);
+	}
+	AhoCorasick(vector<string>& pat) {
+		N.emplace_back(-1);
+		forr(i,0,sz(pat)) insert(pat[i], i);
+		N[0].back = sz(N);
+		N.emplace_back(0);
 
-const int INT_INF = -1;
-constexpr char min_alphabet = '0';
-constexpr char max_alphabet = '1';
-//bool queries[1000];
-const int root_state = 0;
-
-struct ahoState {
-  unordered_map<char, int> go_to;
-  int parent;
-  int fail;
-  // Si bien usamos aristas de output, es necesario tener un vector ya que podría haber patrones repetidos.
-  vector<int> words;
-  int output;
-  bool leaf;
-
-  ahoState(int parent_= INT_INF) : parent(parent_), fail(0), output(INT_INF), leaf(false) {}
+		queue<int> q;
+		for (q.push(0); !q.empty(); q.pop()) {
+			int n = q.front(), prev = N[n].back;
+			forr(i,0,alpha) {
+				int &ed = N[n].next[i], y = N[prev].next[i];
+				if (ed == -1) ed = y;
+				else {
+					N[ed].back = y;
+					(N[ed].end == -1 ? N[ed].end : backp[N[ed].start])
+						= N[y].end;
+					N[ed].nmatches += N[y].nmatches;
+					q.push(ed);
+				}
+			}
+		}
+	}
+	vector<int> find(string word) {
+		int n = 0;
+		vector<int> res; // ll count = 0;
+		trav(c, word) {
+			n = N[n].next[c - first];
+			res.push_back(N[n].end);
+			// count += N[n].nmatches;
+		}
+		return res;
+	}
+	ll count(string word) {
+		int n = 0;
+		ll count = 0;
+		trav(c, word) {
+			n = N[n].next[c - first];
+			count += N[n].nmatches;
+		}
+		return count;
+	}
+	int findAll(vector<string>& pat, string word) {
+		vector<int> r = find(word);
+		unordered_set<int> indexes;
+		forr(i,0,sz(word)) {
+			int ind = r[i];
+			while (ind != -1) {
+				indexes.insert(ind);
+        //res[i - sz(pat[ind]) + 1].push_back(ind);
+				ind = backp[ind];
+			}
+		}
+		return indexes.size();
+	}
 };
-
-struct ahoCorasick {
-  vector<ahoState> state_machine;
-  ahoCorasick(const vector<string>&);
-  ll find_keywords(const string&);
-};
-
-ahoCorasick::ahoCorasick(const vector<string>& keywords) {
-  state_machine.emplace_back();
-
-  for (int i = 0; i < sz(keywords); ++i) {
-    int state_index = root_state;
-    for (char c : keywords[i]) {
-      if (state_machine[state_index].go_to.count(c) == 0) {
-        state_machine[state_index].go_to[c] = sz(state_machine);
-        state_machine.emplace_back(state_index);
-      }
-      state_index = state_machine[state_index].go_to[c];
-    }
-    state_machine[state_index].leaf = true;
-    state_machine[state_index].words.push_back(i);
-  }
-
-  for (char c = min_alphabet; c <= max_alphabet; ++c) 
-    if (state_machine[root_state].go_to.count(c) == 0)
-      state_machine[root_state].go_to[c] = root_state;
-
-  auto states = queue<int>();
-
-  for (auto it = state_machine[root_state].go_to.begin(); it != state_machine[root_state].go_to.end(); ++it)
-    if (it->second != root_state) states.push(it->second);
-
-  while (states.size() != 0) {
-    int state_index = states.front();
-    states.pop();
-
-    for (auto it = state_machine[state_index].go_to.begin(); it != state_machine[state_index].go_to.end(); ++it) {
-      int fail_index = state_machine[state_index].fail;
-      
-      //Falla hasta encontrar un camino por c
-      while(state_machine[fail_index].go_to.count(it->first) == 0) fail_index = state_machine[fail_index].fail;
-      fail_index = state_machine[fail_index].go_to[it->first];
-      state_machine[it->second].fail = fail_index;
-
-      if (state_machine[fail_index].leaf) state_machine[it->second].output = fail_index;
-      else state_machine[it->second].output = state_machine[fail_index].output;
-
-      states.push(it->second);
-    }
-  }
-}
-
-ll ahoCorasick::find_keywords(const string& x) {
-  //for(int i = 0; i < 1000; i++) queries[i] = false; 
-  unordered_set<int> matches;
-
-  int current_state = root_state;
-  for (char c : x) {
-    while (state_machine[current_state].go_to.count(c) == 0) current_state = state_machine[current_state].fail;
-    current_state = state_machine[current_state].go_to[c];
-
-    if (state_machine[current_state].leaf) for (auto word_id : state_machine[current_state].words) {
-        //queries[word_id] = true;
-        matches.insert(word_id);
-    }
-
-    int output_index = current_state;
-    while (state_machine[output_index].output != INT_INF){
-      output_index = state_machine[output_index].output;
-      for (auto word_id : state_machine[output_index].words) {
-          matches.insert(word_id);
-          //queries[word_id] = true;
-      }
-    }
-  }
-  return matches.size();
-  /*
-  ll res = 0;
-  for (int i = 0; i < 1000; ++i) if(queries[i]) res++;
-  return res; 
-  */
-}
-
 
 
 string decrypt(string& w, ll L){
@@ -134,27 +113,30 @@ int main() {
         int N; cin >> N;
         ll L = 0;
         vector<string> main_patterns, extra_patterns;
-        ahoCorasick main_tree(main_patterns), extra_tree(extra_patterns);
+        AhoCorasick main_tree(main_patterns), extra_tree(extra_patterns);
+        unordered_set<string> known_patterns;
         bool dirty = false;
         while(N--){
             string query; cin >> query;
             string w = query.substr(1, query.size()-1);
             w = decrypt(w, L);
             if(query[0] == '+') {
+              if(known_patterns.count(w)) continue;
+              known_patterns.insert(w);
                 extra_patterns.push_back(w);
                 dirty = true;
             } else if(query[0] == '?') {
                 if(dirty){
-                    // arboles desactualizados, recomputo
                     if(extra_patterns.size() > 500) {
                         // concateno al main
                         main_patterns.insert( main_patterns.end(), extra_patterns.begin(), extra_patterns.end() );
                         extra_patterns.clear();
-                        main_tree = ahoCorasick(main_patterns);
+                        main_tree = AhoCorasick(main_patterns);
                     }
-                    extra_tree = ahoCorasick(extra_patterns);
+
+                    extra_tree = AhoCorasick(extra_patterns);
                 }
-                L = main_tree.find_keywords(w) + extra_tree.find_keywords(w);
+                L = main_tree.count(w) + extra_tree.count(w);
                 cout << L << "\n";
                 dirty = false;
             } else {

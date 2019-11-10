@@ -87,8 +87,13 @@ int main() {
         cout << "Case #" << t+1 << ":\n";
         int N; cin >> N;
         ll L = 0;
+        // los patrones de cada arbol
         vector<string> main_patterns, extra_patterns;
+        
+        // los arboles
         AhoCorasick main_tree(main_patterns), extra_tree(extra_patterns);
+        
+        // trackeo los patrones ya vistos, así no agrego duplicados
         unordered_set<string> known_patterns;
         bool dirty = false;
         while(N--){
@@ -96,19 +101,18 @@ int main() {
             string w = query.substr(1, query.size()-1);
             w = decrypt(w, L);
             if(query[0] == '+') {
-              if(known_patterns.count(w)) continue;
-              known_patterns.insert(w);
+                if(known_patterns.count(w)) continue;
+                known_patterns.insert(w);
                 extra_patterns.push_back(w);
                 dirty = true;
             } else if(query[0] == '?') {
-                if(dirty){
+                if(dirty){ // recomputar arboles!
                     if(extra_patterns.size() > 70) {
-                        // concateno al main
+                        // vuelco todo al main
                         main_patterns.insert( main_patterns.end(), extra_patterns.begin(), extra_patterns.end() );
                         extra_patterns.clear();
                         main_tree = AhoCorasick(main_patterns);
                     }
-
                     extra_tree = AhoCorasick(extra_patterns);
                 }
                 L = main_tree.count(w) + extra_tree.count(w);

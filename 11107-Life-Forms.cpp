@@ -50,28 +50,14 @@ struct SuffixArray {
 
 
 struct entry{
-	int len, s1, s2, suff_ix;
+	// entry del lcp, para no tener que estar jugando tanto con índices
+
+	int len, // longitud compartida por estos dos suffijos
+	s1, // el id del string del primer sufijo
+	s2, // el id del string del segundo sufijo
+	suff_ix; // el indice del sufijo izquierdo en la concatenacion de strings
 	entry(int len_, int s1_, int s2_, int suff_ix_) : 
 		len(len_), s1(s1_), s2(s2_), suff_ix(suff_ix_) {}
-};
-
-typedef const int&(*op)(const int&, const int&);  // asociativa, idempotente
-template<op op>
-struct st{
-    vector<vector<int>> t;
-    st(vector<int> &A) { // O(n.logn)
-        int n = sz(A);
-        int K = 31 - __builtin_clz(n)+1;
-        t.assign(K, vector<int>(n));
-        forn(i,n) t[0][i] = A[i];
-        forr(k,1,K) forn(i, n-(1<<k)+1)
-            t[k][i] = op(t[k-1][i], t[k-1][i+(1<<(k-1))]);
-    }
-    int query(int l, int r) {  // O(1), [l, r)
-        assert(l < r);
-        int k = 31 - __builtin_clz(r-l);
-        return op(t[k][l], t[k][r-(1<<k)]);
-    }
 };
 
 int main() {
@@ -82,22 +68,26 @@ int main() {
         if(n==0) break;
 		if(t++ > 0) cout << "\n";
 		int sentinel = 257;
-		basic_string<int> s;
-		vector<int> which;
+		basic_string<int> s; // concatenacion de todos, separados por sentineles
+		vector<int> which; // guardo para cada sufijo en "s" a qué string original pertenece
 		if(n==1){
+			// caso especial de 1 solo string
             string dna; cin >> dna;
 			cout << dna << "\n";
 			continue;
 		}
         forn(i, n){
 			s.push_back(sentinel++);
-			which.push_back(-1);
+			which.push_back(-1); // los sentineles no son de ningun string original
             string dna; cin >> dna;
 			for(auto c: dna) s.push_back(c);
 			forn(j, sz(dna)) which.push_back(i);
         }
+
 		auto sa = SuffixArray(s, sentinel);
 
+		// me armo un lcp "enriquecido" para no tener tanta indirección
+		// y manejo de índices
 		vector<entry> lcp;
 		forn(i, sz(sa.lcp)){
 			int suffix_ix1 = sa.sa[i];
@@ -115,18 +105,19 @@ int main() {
 		int l = 0, r = 0;
 		int max_seen = -1;
 		vector<int> indexes;
-		st<min> st(sa.lcp);
+		deque<entry> q; // cola para hacer rmq con intervalos propios
 
 		while(l < sz(lcp)){
 			while(r < sz(lcp) and disting <= n/2){
 				auto e = lcp[r++];
 				if(e.s1 != -1) if(!seen_count[e.s1]++) disting++;
 				if(e.s2 != -1) if(!seen_count[e.s2]++) disting++;
+				while(q.size() and q.back().len >= e.len) q.pop_back();
+				q.push_back(e);
 			}
-			if(disting <= n/2){
-				break;
-			}
-			int local = st.query(l,r);
+			if(disting <= n/2) break;
+
+			int local = q.front().len;
 			if(local > max_seen){
 				max_seen = local;
 				indexes.clear();
@@ -138,7 +129,9 @@ int main() {
 			auto e = lcp[l++];
 			if(e.s1 != -1) if(!--seen_count[e.s1]) disting--;
 			if(e.s2 != -1) if(!--seen_count[e.s2]) disting--;
+			if(q.front().suff_ix == e.suff_ix) q.pop_front();
 		}
+
 		if(max_seen){
 			set<string> all;
 			for(auto suffix_ix : indexes) {

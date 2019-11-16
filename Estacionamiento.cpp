@@ -37,7 +37,7 @@ double minmean(int i, int d, int lado_actual){
     podrían no ser una distribución de probabilidad (podrían no sumar 1). Dado un
     recorrido R=cuadra_0, ...cuadra_2m, la esperanza para el mismo es
     sum(dist_hasta[cuadra_i]*proba[cuadra_i]). Lo que hacemos acá es calcular
-    una parte (un sufijo) de esta sumatoria.
+    una parte (algo como un sufijo) de esta sumatoria.
     - la posición actual la podemos considerar determinada por "lado_actual" porque
     suponemos que en cada movimiento se explora exactamente 1 cuadra nueva, por lo
     que siempre estoy parado en uno de los dos extremos.
